@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess the Brand</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #f8f8f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 { color: #ffd700; }
+    #word {
+      font-size: 2rem;
+      letter-spacing: 0.4em;
+      margin: 20px;
+    }
+    #letters button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    #letters button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 1.2rem;
+    }
+    #loadError {
+      color: #ff6b6b;
+      font-size: 0.95rem;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Guess the Brand</h1>
+  <div id="word">_ _ _ _</div>
+  <div id="letters"></div>
+  <div id="status">Loading brand list…</div>
+  <div id="loadError"></div>
+
+  <script>
+    let brands = [];
+    let brand = "";
+    let guessed = [];
+    let chances = 6;
+
+    // Load brands.json from the same folder
+    fetch("./brands.json", { cache: "no-store" })
+      .then(response => response.json())
+      .then(data => {
+        brands = data;
+        startGame();
+      })
+      .catch(err => {
+        document.getElementById("loadError").textContent =
+          "Couldn’t load brands.json, using fallback list.";
+        brands = ["NIKE","ADIDAS","SONY","APPLE","AMAZON","TESLA","SAMSUNG","GOOGLE"];
+        startGame();
+      });
+
+    function startGame() {
+      brand = brands[Math.floor(Math.random() * brands.length)].toUpperCase();
+      guessed = [];
+      chances = 6;
+      document.getElementById('status').textContent = "Chances left: " + chances;
+      document.getElementById('letters').innerHTML = "";
+      createLetters();
+      displayWord();
+    }
+
+    function displayWord() {
+      let display = brand.split('').map(l => {
+        if (l === " " || l === "&" || l === "-") return l;
+        return guessed.includes(l) ? l : "_";
+      }).join(' ');
+      document.getElementById('word').textContent = display;
+      if (!display.includes('_')) {
+        document.getElementById('status').textContent =
+          "🎉 You guessed it! The brand is " + brand;
+        disableAll();
+      }
+    }
+
+    function disableAll() {
+      document.querySelectorAll('#letters button').forEach(btn => btn.disabled = true);
+      window.onkeydown = null;
+    }
+
+    function createLetters() {
+      const lettersDiv = document.getElementById('letters');
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (let char of alphabet) {
+        let btn = document.createElement('button');
+        btn.textContent = char;
+        btn.onclick = () => guess(char, btn);
+        lettersDiv.appendChild(btn);
+      }
+      // Keyboard support
+      window.onkeydown = (e) => {
+        const k = e.key.toUpperCase();
+        if (k.length === 1 && alphabet.includes(k)) {
+          const btn = [...lettersDiv.querySelectorAll("button")].find(b => b.textContent === k);
+          if (btn && !btn.disabled) btn.click();
+        }
+      };
+    }
+
+    function guess(letter, btn) {
+      btn.disabled = true;
+      if (brand.includes(letter)) {
+        guessed.push(letter);
+        displayWord();
+      } else {
+        chances--;
+        document.getElementById('status').textContent = "Chances left: " + chances;
+        if (chances === 0) {
+          document.getElementById('status').textContent =
+            "❌ Game over! The brand was " + brand;
+          disableAll();
+        }
+      }
+    }
+  </script>
+</body>
+</html>
